@@ -482,6 +482,7 @@ def set_as_subquery(
     #     )
     with ctx.subrel() as subctx:
         wrapper = subctx.rel
+        wrapper.name = ctx.env.aliases.get('set_as_subquery')
         dispatch.visit(ir_set, ctx=subctx)
 
         if as_value:
@@ -2942,6 +2943,7 @@ def process_set_as_agg_expr_inner(
         ir_set: irast.Set, stmt: pgast.SelectStmt, *,
         aspect: str,
         wrapper: Optional[pgast.SelectStmt],
+        for_group_by: bool=False,  # XXX
         ctx: context.CompilerContextLevel) -> SetRVars:
     expr = ir_set.expr
     assert isinstance(expr, irast.FunctionCall)
@@ -2969,10 +2971,15 @@ def process_set_as_agg_expr_inner(
             for i, (ir_call_arg, typemod) in enumerate(
                     zip(expr.args, expr.params_typemods)):
                 ir_arg = ir_call_arg.expr
-                dispatch.visit(ir_arg, ctx=argctx)
 
                 arg_ref: pgast.BaseExpr
-                if aspect == 'serialized':
+                if for_group_by:
+                    # THIS IS SO DODGY
+                    arg_ref = set_as_subquery(
+                        ir_arg, as_value=True, ctx=argctx)
+                elif aspect == 'serialized':
+                    dispatch.visit(ir_arg, ctx=argctx)
+
                     arg_ref = pathctx.get_path_serialized_or_value_var(
                         argctx.rel, ir_arg.path_id, env=argctx.env)
 
@@ -2980,6 +2987,8 @@ def process_set_as_agg_expr_inner(
                         arg_ref = output.serialize_expr(
                             arg_ref, path_id=ir_arg.path_id, env=argctx.env)
                 else:
+                    dispatch.visit(ir_arg, ctx=argctx)
+
                     arg_ref = pathctx.get_path_value_var(
                         argctx.rel, ir_arg.path_id, env=argctx.env)
 
@@ -3100,7 +3109,7 @@ def process_set_as_agg_expr_inner(
                 )
             )
 
-    if expr.func_initial_value is not None:
+    if expr.func_initial_value is not None and wrapper:
         iv_ir = expr.func_initial_value.expr
         assert iv_ir is not None
 
