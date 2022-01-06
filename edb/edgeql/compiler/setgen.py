@@ -245,12 +245,9 @@ def compile_path(expr: qlast.Path, *, ctx: context.ContextLevel) -> irast.Set:
 
     computables = []
     path_sets = []
-    groups = []  # oh boy I don't like this.
-    # XXX: can we track groupiness in the typeref???
 
     for i, step in enumerate(expr.steps):
         is_computable = False
-        is_group = False
 
         if isinstance(step, qlast.SpecialAnchor):
             path_tip = resolve_special_anchor(step, ctx=ctx)
@@ -309,9 +306,6 @@ def compile_path(expr: qlast.Path, *, ctx: context.ContextLevel) -> irast.Set:
                         ),
                         is_binding=view_scope_info.binding_kind,
                         ctx=ctx,
-                    )
-                    is_group = (
-                        view_scope_info.binding_kind == irast.BindingKind.Group
                     )
 
                     maybe_materialize(stype, path_tip, ctx=ctx)
@@ -506,8 +500,6 @@ def compile_path(expr: qlast.Path, *, ctx: context.ContextLevel) -> irast.Set:
 
         if is_computable:
             computables.append(path_tip)
-        if is_group:
-            groups.append(path_tip.path_id)
 
         if pathctx.path_is_banned(path_tip.path_id, ctx=ctx):
             dname = stype.get_displayname(ctx.env.schema)
@@ -525,15 +517,6 @@ def compile_path(expr: qlast.Path, *, ctx: context.ContextLevel) -> irast.Set:
 
     path_tip.context = expr.context
     pathctx.register_set_in_scope(path_tip, ctx=ctx)
-
-    # OK this is so bad.
-    for path_id in groups:
-        print("FUCK MY SHIT UP", path_id)
-        scope = ctx.path_scope.find_descendant(path_id)
-        if scope is None:
-            scope = ctx.path_scope.find_visible(path_id, allow_group=True)
-        assert scope
-        scope.is_group = True
 
     for ir_set in computables:
         # Compile the computables in sibling scopes to the subpaths
