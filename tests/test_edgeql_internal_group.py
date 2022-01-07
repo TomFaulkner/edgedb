@@ -96,6 +96,8 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
 
     @test.xfail('still broken')
     async def test_edgeql_igroup_simple_05(self):
+        # XXX: The issue here is that we don't do a semi-join
+
         await self.assert_query_result(
             r'''
                 DETACHED GROUP Issue
@@ -124,6 +126,33 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             {2, 1},
         )
 
+    @test.xfail('DISTINCT is busted for properties too')
+    async def test_edgeql_igroup_simple_07(self):
+        await self.assert_query_result(
+            r'''
+                WITH MODULE cards
+                DETACHED GROUP Card
+                USING _ := .cost//2
+                BY _
+                INTO Card
+                UNION count(DISTINCT Card.element);
+            ''',
+            {3, 2, 3},
+        )
+
+    async def test_edgeql_igroup_simple_08(self):
+        await self.assert_query_result(
+            r'''
+            WITH MODULE cards
+            DETACHED GROUP Card
+            USING _ := .cost//2
+            BY _
+            INTO Card
+            UNION count(array_agg(Card.element));
+            ''',
+            [1, 1, 1],
+        )
+
     async def test_edgeql_igroup_by_01(self):
         await self.assert_query_result(
             r"""
@@ -150,7 +179,6 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             ],
         )
 
-    @test.xfail('still broken')
     async def test_edgeql_igroup_by_02(self):
         await self.assert_query_result(
             r"""
@@ -164,7 +192,7 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
                     status := B,
                 )
                 )
-                FILTER sum > 5
+                FILTER .sum > 5
                 ORDER BY .status;
             """,
             [{
@@ -173,7 +201,7 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             }],
         )
 
-    @test.xfail('still broken')
+    @test.xfail('still broken -- nulls')
     async def test_edgeql_igroup_result_alias_01(self):
         await self.assert_query_result(
             r'''
@@ -193,12 +221,12 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
 
         await self.assert_query_result(
             r'''
-                SELECT (
+                SELECT _ := (
                 DETACHED GROUP Issue
                 USING _ :=  Issue.time_estimate
                 BY _
                 INTO Issue
-                UNION _ := (
+                UNION (
                     count := count(Issue.status.id),
                     te := array_agg(DISTINCT Issue.time_estimate > 0),
                 )
@@ -207,7 +235,7 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             [{'count': 1, 'te': [True]}, {'count': 3, 'te': []}],
         )
 
-    @test.xfail('still broken')
+    @test.xfail('still broken -- nulls')
     async def test_edgeql_igroup_result_alias_02(self):
         await self.assert_query_result(
             r'''
@@ -306,7 +334,7 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             [1, 3, 42, 42],
         )
 
-    @test.xfail('still broken')
+    @test.xfail('still broken - missing FROM-clause')
     async def test_edgeql_igroup_returning_03(self):
         await self.assert_query_result(
             r'''
@@ -336,7 +364,7 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             ],
         )
 
-    @test.xfail('still broken')
+    @test.xfail('still broken - COALESCE types')
     async def test_edgeql_igroup_returning_04(self):
         await self.assert_query_result(
             r'''
@@ -372,7 +400,7 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             ],
         )
 
-    @test.xfail('still broken')
+    @test.xfail('still broken - COALESCE types')
     async def test_edgeql_igroup_returning_05(self):
         await self.assert_query_result(
             r'''
@@ -401,7 +429,11 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             ],
         )
 
-    @test.xfail('still broken')
+    @test.xfail('''
+        Gets duplicated once for each group
+
+        But it works if there is no outer SELECT
+    ''')
     async def test_edgeql_igroup_returning_06(self):
         await self.assert_query_result(
             r'''
@@ -430,8 +462,10 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             ],
         )
 
-    @test.xfail('still broken')
+    @test.xfail('Broken when injecting types - missing FROM clause')
     async def test_edgeql_igroup_returning_07(self):
+        self.assertTrue(False)  # ... prevent flakey unexpected successes
+
         await self.assert_query_result(
             r'''
                 # Nominate a leader in each group from among the group.
@@ -521,8 +555,10 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             ]
         )
 
-    @test.xfail('still broken')
+    @test.xfail('Broken when injecting types - is not a computed pointer')
     async def test_edgeql_igroup_returning_08(self):
+        self.assertTrue(False)  # ... prevent flakey unexpected successes
+
         await self.assert_query_result(
             r'''
                 # Nominate a leader in each group from among the group.
@@ -609,7 +645,8 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
 
     @test.xfail('still broken')
     async def test_edgeql_igroup_returning_09(self):
-        # XXX
+        # this isn't valid syntax yet
+        # how to deal with the order by Grouping?
         await self.assert_query_result(
             r'''
                 # Nominate a leader in each group from among the group.
@@ -692,7 +729,7 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             ]
         )
 
-    @test.xfail('still broken')
+    @test.xfail('still broken - no method to generate code for TupleVar')
     async def test_edgeql_igroup_by_tuple_01(self):
         await self.assert_query_result(
             r"""
@@ -876,9 +913,8 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             ],
         )
 
-    @test.xfail('still broken')
+    @test.xfail('still broken - extra nulls, duplicates')
     async def test_edgeql_igroup_by_multiple_05(self):
-        # XXX: results are super wrong! extra nulls, duplicates fuck
         await self.assert_query_result(
             r"""
                 SELECT (
@@ -982,7 +1018,7 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
                     # At this point C is a subset of Card. So the below
                     # expression should be the size of the subset in
                     # percent.
-                    100 * count(C) / count(Card),
+                    100 * count(C) // count(Card),
                     x,
                 )) ORDER BY .2;
             """,
@@ -995,7 +1031,7 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             ]
         )
 
-    @test.xfail('still broken')
+    @test.xfail('still broken - test may be wrong?')
     async def test_edgeql_igroup_linkproperty_simple_01(self):
         # XXX: I think this is wrong, right? Can't group by B??
         await self.assert_query_result(
@@ -1078,7 +1114,7 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             ]
         )
 
-    @test.xfail('still broken')
+    @test.xfail('still broken - not a singleton, maybe')
     async def test_edgeql_igroup_linkproperty_simple_03(self):
         await self.assert_query_result(
             r"""
@@ -1107,7 +1143,7 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             ]
         )
 
-    @test.xfail('still broken')
+    @test.xfail('still broken - ... linkprops')
     async def test_edgeql_igroup_linkproperty_nested_01(self):
         await self.assert_query_result(
             r"""
@@ -1180,7 +1216,7 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             ]
         )
 
-    @test.xfail('still broken')
+    @test.xfail('still broken - linkprops')
     async def test_edgeql_igroup_linkproperty_multiple_01(self):
         await self.assert_query_result(
             r"""
@@ -1237,7 +1273,7 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             ]
         )
 
-    @test.xfail('still broken')
+    @test.xfail('still broken - complains about the ordering cardinality')
     async def test_edgeql_igroup_scalar_01a(self):
         # huh.
         await self.assert_query_result(
@@ -1251,6 +1287,28 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
                 INTO I
                 UNION (
                     values := array_agg(I ORDER BY I)
+                )) ORDER BY _r.values;
+            """,
+            [
+                {'values': [1, 3]},
+                {'values': [2, 4]}
+            ]
+        )
+
+    @test.xfail('still broken - cannot create root rvar for non-object path')
+    async def test_edgeql_igroup_scalar_01b(self):
+        # huh.
+        await self.assert_query_result(
+            r"""
+                WITH
+                    I := <int64>Issue.number
+                SELECT _r := (
+                DETACHED GROUP I
+                USING _ :=  I % 2 = 0
+                BY _
+                INTO I
+                UNION (
+                    values := array_agg((SELECT _ := I ORDER BY _))
                 )) ORDER BY _r.values;
             """,
             [
