@@ -111,7 +111,6 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             {2, 1},
         )
 
-    @test.xfail('still broken')
     async def test_edgeql_igroup_simple_06(self):
         await self.assert_query_result(
             r'''
@@ -126,7 +125,6 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             {2, 1},
         )
 
-    @test.xfail('DISTINCT is busted for properties too')
     async def test_edgeql_igroup_simple_07(self):
         await self.assert_query_result(
             r'''
@@ -137,7 +135,7 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
                 INTO Card
                 UNION count(DISTINCT Card.element);
             ''',
-            {3, 2, 3},
+            tb.bag([3, 2, 3]),
         )
 
     async def test_edgeql_igroup_simple_08(self):
@@ -362,7 +360,6 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             ],
         )
 
-    @test.xfail('still broken - COALESCE types')
     async def test_edgeql_igroup_returning_04(self):
         await self.assert_query_result(
             r'''
@@ -398,7 +395,6 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             ],
         )
 
-    @test.xfail('still broken - COALESCE types')
     async def test_edgeql_igroup_returning_05(self):
         await self.assert_query_result(
             r'''
@@ -999,7 +995,6 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             ],
         )
 
-    @test.xfail('still broken')
     async def test_edgeql_igroup_by_multiple_07a(self):
         # XXX: add a version that deletes the x
         await self.assert_query_result(
