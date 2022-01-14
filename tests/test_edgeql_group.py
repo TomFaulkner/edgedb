@@ -19,7 +19,6 @@
 import os.path
 
 from edb.testbase import server as tb
-from edb.tools import test
 
 
 class TestEdgeQLGroup(tb.QueryTestCase):
@@ -127,7 +126,7 @@ class TestEdgeQLGroup(tb.QueryTestCase):
             ])
         )
 
-    async def test_edgeql_group_process_01(self):
+    async def test_edgeql_group_process_select_01(self):
         await self.assert_query_result(
             r'''
             WITH MODULE cards
@@ -144,7 +143,40 @@ class TestEdgeQLGroup(tb.QueryTestCase):
             ])
         )
 
-    async def test_edgeql_group_process_02a(self):
+    async def test_edgeql_group_process_select_02(self):
+        await self.assert_query_result(
+            r'''
+            WITH MODULE cards
+            SELECT (GROUP Card BY .element) {
+                element := .key.element,
+                cnt := count(.elements),
+            } FILTER .element != 'Water';
+            ''',
+            tb.bag([
+                {"cnt": 2, "element": "Fire"},
+                {"cnt": 2, "element": "Earth"},
+                {"cnt": 3, "element": "Air"},
+            ])
+        )
+
+    async def test_edgeql_group_process_select_03(self):
+        await self.assert_query_result(
+            r'''
+            WITH MODULE cards
+            SELECT (GROUP Card BY .element) {
+                element := .key.element,
+                cnt := count(.elements),
+            } ORDER BY .element;
+            ''',
+            [
+                {"cnt": 3, "element": "Air"},
+                {"cnt": 2, "element": "Earth"},
+                {"cnt": 2, "element": "Fire"},
+                {"cnt": 2, "element": "Water"},
+            ]
+        )
+
+    async def test_edgeql_group_process_for_01a(self):
         await self.assert_query_result(
             r'''
             WITH MODULE cards
@@ -157,11 +189,11 @@ class TestEdgeQLGroup(tb.QueryTestCase):
                 {"cnt": 2, "element": "Water"},
                 {"cnt": 2, "element": "Fire"},
                 {"cnt": 2, "element": "Earth"},
-                {"cnt": 3, "element": "Air"}
+                {"cnt": 3, "element": "Air"},
             ])
         )
 
-    async def test_edgeql_group_process_02b(self):
+    async def test_edgeql_group_process_for_01b(self):
         await self.assert_query_result(
             r'''
             WITH MODULE cards
