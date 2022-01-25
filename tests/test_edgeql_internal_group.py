@@ -471,7 +471,6 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             ],
         )
 
-    @test.xfail('ORDER BY is busted; missing FROM')
     async def test_edgeql_igroup_returning_06a(self):
         await self.assert_query_result(
             r'''
@@ -708,10 +707,7 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             ]
         )
 
-    @test.xfail('still broken')
     async def test_edgeql_igroup_returning_09(self):
-        # this isn't valid syntax yet
-        # how to deal with the order by Grouping?
         await self.assert_query_result(
             r'''
                 # Nominate a leader in each group from among the group.
@@ -1357,9 +1353,7 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             ]
         )
 
-    @test.xfail('still broken - complains about the ordering cardinality')
     async def test_edgeql_igroup_scalar_01a(self):
-        # huh.
         await self.assert_query_result(
             r"""
                 WITH
