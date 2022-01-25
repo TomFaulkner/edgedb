@@ -39,7 +39,6 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
                      'cards_setup.edgeql'),
     ]
 
-    @test.xfail('still broken')
     async def test_edgeql_igroup_simple_01(self):
         await self.assert_query_result(
             r'''
@@ -94,10 +93,7 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             {3, 1},
         )
 
-    @test.xfail('still broken')
     async def test_edgeql_igroup_simple_05(self):
-        # XXX: The issue here is that we don't do a semi-join
-
         await self.assert_query_result(
             r'''
                 DETACHED GROUP Issue
@@ -272,7 +268,7 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
                     te := array_agg(DISTINCT Issue.time_estimate > 0),
                 ) ORDER BY _.te;
             ''',
-            [{'count': 3, 'te': []}, {'count': 1, 'te': [True]}]
+            [{'count': 2, 'te': []}, {'count': 1, 'te': [True]}]
         )
 
         await self.assert_query_result(
@@ -286,7 +282,7 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
                     te := array_agg(DISTINCT Issue.time_estimate > 0),
                 ) ORDER BY _.te DESC;
             ''',
-            [{'count': 1, 'te': [True]}, {'count': 3, 'te': []}],
+            [{'count': 1, 'te': [True]}, {'count': 2, 'te': []}],
         )
 
     async def test_edgeql_igroup_result_alias_02(self):
@@ -304,7 +300,7 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
                 ) ORDER BY
                     _.te DESC;
             ''',
-            [{'count': 1, 'te': [True]}, {'count': 3, 'te': []}],
+            [{'count': 1, 'te': [True]}, {'count': 2, 'te': []}],
         )
 
     async def test_edgeql_igroup_nested_01(self):
