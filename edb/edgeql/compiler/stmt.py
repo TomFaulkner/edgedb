@@ -333,7 +333,10 @@ def compile_InternalGroupQuery(
                     )
                     binding.context = using_entry.expr.context
                     stmt.using[using_entry.alias] = (
-                        binding, qltypes.Cardinality.UNKNOWN)
+                        setgen.new_set_from_set(
+                            binding, preserve_scope_ns=True, ctx=sctx),
+                        qltypes.Cardinality.UNKNOWN)
+                    binding.is_visible_binding_ref = True
 
             subject_stype = setgen.get_set_type(stmt.subject, ctx=topctx)
             stmt.group_binding = _make_group_binding(
