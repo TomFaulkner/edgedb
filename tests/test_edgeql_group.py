@@ -72,7 +72,6 @@ class TestEdgeQLGroup(tb.QueryTestCase):
         )
 
     async def test_edgeql_group_simple_02(self):
-        # XXX: key, also
         await self.assert_query_result(
             r'''
             SELECT (GROUP cards::Card {name} BY .element)
@@ -103,7 +102,6 @@ class TestEdgeQLGroup(tb.QueryTestCase):
         )
 
     async def test_edgeql_group_simple_03(self):
-        # XXX: key, also
         # the compilation here is kind of a bummer; could we avoid an
         # unnest?
         await self.assert_query_result(
