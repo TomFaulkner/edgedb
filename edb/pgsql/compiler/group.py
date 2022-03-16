@@ -336,6 +336,9 @@ def _compile_group(
 
         # Now we compile the bindings
         groupctx.path_scope = subjctx.path_scope.new_child()
+        # XXX: wait why
+        groupctx.path_scope[stmt.group_binding.path_id] = None
+
         for _alias, (value, using_card) in stmt.using.items():
             # If the using bit is nullable, we need to compile it
             # as optional, or we'll get in trouble.
