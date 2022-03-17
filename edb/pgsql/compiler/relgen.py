@@ -1079,6 +1079,7 @@ def process_set_as_path(
             path_id=ir_set.path_id,
             aspects=['value']
         )
+        rvars = [main_rvar]
 
     elif not semi_join:
         # Link range.

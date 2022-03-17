@@ -378,6 +378,8 @@ class Environment:
     #: query level.
     check_ctes: List[pgast.CommonTableExpr]
 
+    shutup: int
+
     def __init__(
         self,
         *,
@@ -410,6 +412,7 @@ class Environment:
         self.materialized_views = {}
         self.check_ctes = []
         self.backend_runtime_params = backend_runtime_params
+        self.shutup = 0
 
 
 # XXX: this context hack is necessary until pathctx is converted

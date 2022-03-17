@@ -690,3 +690,31 @@ class TestEdgeQLGroup(tb.QueryTestCase):
                 {"elements": tb.bag([[1, 1], [1, 1]]), "key": {"z": [1, 1]}}
             ])
         )
+
+    async def test_edgeql_group_semijoin_group_01(self):
+        await self.assert_query_result(
+            '''
+                with module cards
+                group (
+                    select (group Card{name, cost} by .element)
+                    order by .key.element limit 1
+                ).elements by .cost;
+            ''',
+            tb.bag([
+                {
+                    "elements": [{"cost": 1, "name": "Sprite"}],
+                    "grouping": ["cost"],
+                    "key": {"cost": 1}
+                },
+                {
+                    "elements": [{"cost": 2, "name": "Giant eagle"}],
+                    "grouping": ["cost"],
+                    "key": {"cost": 2}
+                },
+                {
+                    "elements": [{"cost": 4, "name": "Djinn"}],
+                    "grouping": ["cost"],
+                    "key": {"cost": 4}
+                }
+            ])
+        )

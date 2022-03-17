@@ -411,7 +411,6 @@ class TestEdgeQLGroupInternal(tb.QueryTestCase):
             ],
         )
 
-    @test.xfail('ORDER BY broken - missing FROM-clause')
     async def test_edgeql_igroup_returning_04(self):
         await self.assert_query_result(
             r'''

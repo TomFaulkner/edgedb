@@ -311,20 +311,31 @@ def _compile_group(
             subjctx.expr_exposed = False
 
             dispatch.visit(stmt.subject, ctx=subjctx)
+            # if stmt.subject.path_id.is_objtype_path():
+            #     # This shouldn't technically be needed but we generate
+            #     # better code with it.
+            #     relgen.ensure_source_rvar(
+            #         stmt.subject, subjctx.rel, ctx=subjctx)
 
         # XXX: aspects?
         subj_rvar = relctx.rvar_for_rel(
             subjctx.rel, ctx=groupctx, lateral=True)
-        # aspects = pathctx.list_path_aspects(
-        #     newctx.rel, element.val.path_id, env=ctx.env)
+        aspects = pathctx.list_path_aspects(
+            subjctx.rel, stmt.subject.path_id, env=ctx.env)
         # update_mask=False because we are doing this solely to remap
         # elements individually and don't want to affect the mask.
+        # ugh, this is hacking around the OH MY thing below
+        # print("YEAAAAAH", aspects)
+        ctx.env.shutup += 1
         relctx.include_rvar(
             grouprel, subj_rvar, stmt.group_binding.path_id,
+            aspects=aspects,
             update_mask=False, ctx=groupctx)
         relctx.include_rvar(
             grouprel, subj_rvar, stmt.subject.path_id,
+            aspects=aspects,
             update_mask=False, ctx=groupctx)
+        ctx.env.shutup -= 1
 
         # OH MY.
         # We set up this mapping *after* compiling and including the rvar
