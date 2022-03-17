@@ -188,7 +188,8 @@ def include_rvar(
         pull_namespace: bool=True,
         update_mask: bool=True,
         flavor: str='normal',
-        aspects: Optional[Tuple[str, ...] | AbstractSet[str]]=None,
+        aspects: Optional[Tuple[str, ...] |
+                          AbstractSet[str] | Literal['list']]=None,
         ctx: context.CompilerContextLevel) -> pgast.PathRangeVar:
     """Ensure that *rvar* is visible in *stmt* as a value/source aspect.
 
@@ -210,11 +211,22 @@ def include_rvar(
     :param ctx:
         Compiler context.
     """
-    if aspects is None:
-        if path_id.is_objtype_path():
-            aspects = ('source', 'value')
+    if aspects == 'list':
+        if isinstance(rvar, pgast.RangeSubselect):
+            aspects = pathctx.list_path_aspects(
+                rvar.query, path_id, env=ctx.env)
         else:
-            aspects = ('value',)
+            aspects = None
+    if aspects is None:
+        aspects = ('value',)
+        if path_id.is_objtype_path():
+            # XXX: slow and dumb
+            if isinstance(rvar, pgast.RangeSubselect):
+                if 'source' in pathctx.list_path_aspects(
+                        rvar.query, path_id, env=ctx.env):
+                    aspects += ('source',)
+            else:
+                aspects += ('source',)
 
     return include_specific_rvar(
         stmt, rvar=rvar, path_id=path_id,
@@ -779,7 +791,7 @@ def set_to_array(
     )
 
     result = pgast.SelectStmt()
-    include_rvar(result, subrvar, path_id=path_id, ctx=ctx)
+    include_rvar(result, subrvar, path_id=path_id, aspects='list', ctx=ctx)
 
     val: Optional[pgast.BaseExpr] = (
         pathctx.maybe_get_path_serialized_var(

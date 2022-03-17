@@ -805,6 +805,23 @@ def put_path_rvar(
         if path_id in query.path_id_mask:
             put_path_id_mask(stmt, path_id)
 
+    if (
+        flavor == 'normal'
+        and aspect == 'source'
+        and isinstance(rvar, pgast.RangeSubselect)
+        and not rvar.query.op
+        # and env.shutup == 0
+        and path_id.is_objtype_path()
+        and not path_id.is_type_intersection_path()  # or...?
+    ):
+        inner_path_id = map_path_id(path_id, rvar.query.view_path_id_map)
+        existing = maybe_get_path_rvar(
+            rvar.query, inner_path_id, flavor=flavor, aspect=aspect, env=env)
+        # if not existing:
+        #     print(f"Setting source without really having one {path_id}")
+        #     breakpoint()
+        assert existing, f"Setting source without really having one {path_id}"
+
 
 def put_path_value_rvar(
         stmt: pgast.Query, path_id: irast.PathId, rvar: pgast.PathRangeVar, *,
