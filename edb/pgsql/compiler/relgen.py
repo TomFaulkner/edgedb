@@ -1192,19 +1192,20 @@ def process_set_as_subquery(
             source_is_visible = source_is_actually_visible
 
         if source_is_visible and not (
-            # XXX: But make sure not to for FreeObjects, which always
-            # exist and which basically never are depended on!
-            source_is_actually_visible
-            and str(ir_source.typeref.real_material_type.name_hint)
-            == 'std::FreeObject'
-            # XXX: Do we need to go *deeper*? Probably yes?
-            and not (ir_source.expr and ir_source.expr.materialized_sets)
-            # XXX: scope_stmt?
-            and _lookup_set_rvar(
-                ir_source,
-                scope_stmt=relctx.maybe_get_scope_stmt(
-                    ir_source.path_id, ctx=ctx),
-                ctx=ctx) is None
+            False
+            # # XXX: But make sure not to for FreeObjects, which always
+            # # exist and which basically never are depended on!
+            # source_is_actually_visible
+            # and str(ir_source.typeref.real_material_type.name_hint)
+            # == 'std::FreeObject'
+            # # XXX: Do we need to go *deeper*? Probably yes?
+            # and not (ir_source.expr and ir_source.expr.materialized_sets)
+            # # XXX: scope_stmt?
+            # and _lookup_set_rvar(
+            #     ir_source,
+            #     scope_stmt=relctx.maybe_get_scope_stmt(
+            #         ir_source.path_id, ctx=ctx),
+            #     ctx=ctx) is None
         ):
             source_set_rvar = get_set_rvar(ir_source, ctx=ctx)
             # Force a source rvar so that trivial computed pointers

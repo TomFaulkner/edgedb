@@ -640,6 +640,91 @@ class TestEdgeQLGroup(tb.QueryTestCase):
             res,
         )
 
+    async def test_edgeql_group_by_group_by_03(self):
+        res = tb.bag([
+            {
+                "el": "Water",
+                "groups": tb.bag([
+                    {"elements": [{"cost": 2, "name": "Bog monster"}],
+                     "even": 0},
+                    {"elements": [{"cost": 3, "name": "Giant turtle"}],
+                     "even": 1}
+                ])
+            },
+            {
+                "el": "Fire",
+                "groups": [
+                    {
+                        "elements": tb.bag([
+                            {"cost": 1, "name": "Imp"},
+                            {"cost": 5, "name": "Dragon"}
+                        ]),
+                        "even": 1
+                    }
+                ]
+            },
+            {
+                "el": "Earth",
+                "groups": [
+                    {
+                        "elements": tb.bag([
+                            {"cost": 1, "name": "Dwarf"},
+                            {"cost": 3, "name": "Golem"}
+                        ]),
+                        "even": 1
+                    }
+                ]
+            },
+            {
+                "el": "Air",
+                "groups": tb.bag([
+                    {
+                        "elements": tb.bag([
+                            {"cost": 2, "name": "Giant eagle"},
+                            {"cost": 4, "name": "Djinn"}
+                        ]),
+                        "even": 0
+                    },
+                    {"elements": [{"cost": 1, "name": "Sprite"}], "even": 1}
+                ])
+            }
+        ])
+
+        await self.assert_query_result(
+            '''
+            with module cards
+            select (group Card by .element) {
+                el := .key.element,
+                groups := (
+                  with z := (group .elements using x := .cost%2 by x)
+                  for z in z union (
+                    even := z.key.x,
+                    elements := array_agg(z.elements{name, cost}),
+                  )
+                )
+            };
+            ''',
+            res,
+        )
+
+        # The real query we want here
+        await self.assert_query_result(
+            '''
+            with module cards
+            select (group Card by .element) {
+                el := .key.element,
+                groups := (
+                  with z := (group .elements using x := .cost%2 by x)
+                  select (
+                    even := z.key.x,
+                    elements := array_agg(z.elements{name, cost}),
+                  )
+                )
+            };
+            ''',
+            res,
+        )
+
     async def test_edgeql_group_id_errors(self):
         async with self.assertRaisesRegexTx(
             edgedb.UnsupportedFeatureError,

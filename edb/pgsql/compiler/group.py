@@ -311,11 +311,11 @@ def _compile_group(
             subjctx.expr_exposed = False
 
             dispatch.visit(stmt.subject, ctx=subjctx)
-            # if stmt.subject.path_id.is_objtype_path():
-            #     # This shouldn't technically be needed but we generate
-            #     # better code with it.
-            #     relgen.ensure_source_rvar(
-            #         stmt.subject, subjctx.rel, ctx=subjctx)
+            if stmt.subject.path_id.is_objtype_path():
+                # This shouldn't technically be needed but we generate
+                # better code with it.
+                relgen.ensure_source_rvar(
+                    stmt.subject, subjctx.rel, ctx=subjctx)
 
         # XXX: aspects?
         subj_rvar = relctx.rvar_for_rel(
@@ -359,6 +359,11 @@ def _compile_group(
             if using_card.can_be_zero():
                 groupctx.force_optional = ctx.force_optional | {value.path_id}
             # assert groupctx.path_scope[value.path_id] == ctx.rel
+            # OK THIS IS WILDLY FUCKED
+            for m in groupctx.path_scope.maps:
+                if value.path_id in m:
+                    del m[value.path_id]
+
             # groupctx.path_scope[value.path_id] = None  # ???
             dispatch.visit(value, ctx=groupctx)
             groupctx.force_optional = ctx.force_optional
