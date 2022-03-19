@@ -484,11 +484,33 @@ def _compile_group(
                 query, group_use.path_id,
                 group_rvar, aspect='value', env=ctx.env)
 
-    # Process materialized sets
-    clauses.compile_materialized_exprs(query, stmt, ctx=ctx)
+    vol_ref = None
 
-    # ... right? It's that simple?
-    clauses.compile_output(stmt.result, ctx=ctx)
+    def _get_volatility_ref() -> Optional[pgast.BaseExpr]:
+        nonlocal vol_ref
+        if vol_ref:
+            return vol_ref
+
+        name = ctx.env.aliases.get('key')
+        grouprel.target_list.append(
+            pgast.ResTarget(
+                name=name,
+                val=pgast.FuncCall(name=('row_number',), args=[],
+                                   over=pgast.WindowDef())
+            )
+        )
+        vol_ref = pgast.ColumnRef(name=[group_rvar.alias.aliasname, name])
+        return vol_ref
+
+    with ctx.new() as outctx:
+
+        outctx.volatility_ref += (lambda stmt, xctx: _get_volatility_ref(),)
+
+        # Process materialized sets
+        clauses.compile_materialized_exprs(query, stmt, ctx=outctx)
+
+        # ... right? It's that simple?
+        clauses.compile_output(stmt.result, ctx=outctx)
 
     # XXX: duped from select?
     with ctx.new() as ictx:
