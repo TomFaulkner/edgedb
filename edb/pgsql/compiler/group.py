@@ -331,11 +331,11 @@ def _compile_group(
             grouprel, subj_rvar, stmt.group_binding.path_id,
             aspects=aspects,
             update_mask=False, ctx=groupctx)
+        ctx.env.shutup -= 1
         relctx.include_rvar(
             grouprel, subj_rvar, stmt.subject.path_id,
             aspects=aspects,
             update_mask=False, ctx=groupctx)
-        ctx.env.shutup -= 1
 
         # OH MY.
         # We set up this mapping *after* compiling and including the rvar
