@@ -112,15 +112,21 @@ def compile_materialized_exprs(
                 continue
 
             mat_ids = set(mat_set.uses)
+            # print(">>> materializing", mat_set.materialized.path_id, mat_ids)
+            # breakpoint()
 
             # We pack optional things into arrays also, since it works.
             # TODO: use NULL?
             card = mat_set.cardinality
             is_singleton = card.is_single() and not card.can_be_zero()
 
-            matctx.path_scope = matctx.path_scope.new_child()
+            old_scope = matctx.path_scope
+            matctx.path_scope = old_scope.new_child()
             for mat_id in mat_ids:
-                matctx.path_scope[mat_id] = None
+                # XXX: this is bad??
+                for k in old_scope:
+                    if k.startswith(mat_id):
+                        matctx.path_scope[k] = None
             mat_qry = relgen.set_as_subquery(
                 mat_set.materialized, as_value=True, ctx=matctx
             )
@@ -149,6 +155,10 @@ def compile_materialized_exprs(
                     flavor='packed', update_mask=False, pull_namespace=False,
                     ctx=matctx,
                 )
+
+            # print(
+            #     "<<< done materializing",
+            #     mat_set.materialized.path_id, mat_ids)
 
 
 def compile_iterator_expr(
