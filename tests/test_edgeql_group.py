@@ -21,7 +21,7 @@ import os.path
 import edgedb
 
 from edb.testbase import server as tb
-# from edb.tools import test
+from edb.tools import test
 
 
 class TestEdgeQLGroup(tb.QueryTestCase):
@@ -803,3 +803,28 @@ class TestEdgeQLGroup(tb.QueryTestCase):
                 }
             ])
         )
+
+    @test.xfail('Gives bare ids instead of shapes')
+    async def test_edgeql_group_simple_agg_01(self):
+        await self.con.query(
+            r'''
+                with module cards
+                select (group Card by .element) {
+                    el := .key.element, num := array_agg(.elements)
+                };
+            ''')
+
+    @test.xfail("The ids don't match")
+    async def test_edgeql_group_agg_with_free_ref_01(self):
+        # This is silly and pathological and I would be able to sleep
+        # at night even if it doesn't work.
+        out = await self.con.query(r'''
+            with module cards
+            select (group Card by .element) {
+                id, els := array_agg((.id, .elements.name))
+            };
+        ''')
+
+        for obj in out:
+            for el in obj.els:
+                self.assertEqual(obj.id, el[0])

@@ -152,6 +152,8 @@ class FindAggregatingUses(ast_visitor.NodeVisitor):
             # to do it in a GROUP
             if returns_set:
                 self.aggregate = None
+            # XXX: disabling this optimization breaks some things and
+            # fixes others... sigh!
             elif (
                 calls_sql_func
                 and typemod == qltypes.TypeModifier.SetOfType
