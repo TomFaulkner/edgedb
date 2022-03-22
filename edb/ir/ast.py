@@ -254,6 +254,10 @@ class BasePointerRef(ImmutableBase):
             res.update(child.descendants())
         return res
 
+    @property
+    def real_material_ptr(self) -> BasePointerRef:
+        return self.material_ptr or self
+
     def __repr__(self) -> str:
         return f'<ir.{type(self).__name__} \'{self.name}\' at 0x{id(self):x}>'
 

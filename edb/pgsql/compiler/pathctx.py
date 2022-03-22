@@ -1111,14 +1111,15 @@ def _get_path_output(
         (src_path_id := path_id.src_path())
         and (src_rptr := src_path_id.rptr())
         and (
-            src_rptr.is_computable
-            or src_rptr.out_cardinality.is_multi()
+            src_rptr.real_material_ptr.out_cardinality.is_multi()
+            and not irtyputils.is_free_object(src_path_id.target)
         )
     ):
         # A value reference to Object.id is the same as a value
         # reference to the Object itself. (Though we want to only
         # apply this in the cases that process_set_as_path does this
-        # optimization, which means not for multi props.)
+        # optimization, which means not for multi props. We also always
+        # allow it for free objects.)
         src_path_id = path_id.src_path()
         assert src_path_id is not None
         id_output = maybe_get_path_output(rel, src_path_id,
