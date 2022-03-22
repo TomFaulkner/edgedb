@@ -600,6 +600,9 @@ def _infer_set_inner(
                     c.dir_cardinality(rptr.direction)
                     for c in rptrref.union_components
                 )
+            elif ctx.ignore_computed_cards and ir.expr:
+                rptrref_card = infer_cardinality(
+                    ir.expr, scope_tree=scope_tree, ctx=ctx)
             else:
                 rptrref_card = rptrref.dir_cardinality(rptr.direction)
 

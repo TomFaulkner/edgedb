@@ -27,6 +27,7 @@ from edb.edgeql import qltypes
 from edb.ir import ast as irast
 
 from . import context
+from . import inference
 
 
 class FindAggregatingUses(ast_visitor.NodeVisitor):
@@ -38,7 +39,9 @@ class FindAggregatingUses(ast_visitor.NodeVisitor):
 
     def __init__(
         self, target: irast.PathId, to_skip: AbstractSet[irast.PathId],
+        *,
         ctx: context.ContextLevel,
+        infctx: inference.InfCtx,
     ) -> None:
         super().__init__()
         self.target = target
@@ -50,6 +53,10 @@ class FindAggregatingUses(ast_visitor.NodeVisitor):
         self.count_logs: Dict[
             Optional[irast.Set], FrozenSet[irast.PathId]] = {}
         self.scope_tree = ctx.path_scope
+        self.infctx = infctx._replace(
+            singletons=infctx.singletons | {target},
+            ignore_computed_cards=True,
+        )
 
     def visit_Stmt(self, stmt: irast.Stmt) -> Any:
         # XXX???
@@ -176,6 +183,8 @@ class FindAggregatingUses(ast_visitor.NodeVisitor):
             self.visit(arg)
             self.aggregate = old
 
+            # XXX: worry about the fictional multi-arg case
+            force_fail = False
             if old_counts is not None:
                 self.count_logs[ir_set] = frozenset({
                     k for k, v in self.counts.items() if v == 0
@@ -190,17 +199,36 @@ class FindAggregatingUses(ast_visitor.NodeVisitor):
                         and self.scope_tree.is_visible(k)
                         and ir_set in self.sightings
                     ):
+                        force_fail = True
                         self.sightings.discard(ir_set)
                         self.sightings.add(None)
                     old_counts[k] = self.counts.get(k, 0) + n
 
+                # If, assuming the target is single, the aggregate is
+                # still multi, then we can't extract it, since that
+                # would lead to actually return multiple elements in a
+                # SQL subquery.
+                if (
+                    ir_set in self.sightings
+                    # sigh, I hate doing all this extra card inference, but...
+                    and inference.infer_cardinality(
+                        arg.expr, scope_tree=self.scope_tree,
+                        ctx=self.infctx).is_multi()
+                ):
+                    force_fail = True
+
                 self.counts = old_counts
+
+            if force_fail:
+                self.sightings.discard(ir_set)
+                self.sightings.add(None)
 
 
 def infer_group_aggregates(
     ir: irast.Base,
     *,
     ctx: context.ContextLevel,
+    infctx: inference.InfCtx,
 ) -> None:
     # XXX: scope scope scope???
     flt = lambda n: isinstance(n, irast.GroupStmt)
@@ -210,6 +238,7 @@ def infer_group_aggregates(
             stmt.group_binding.path_id,
             {x.path_id for x, _ in stmt.using.values()},
             ctx=ctx,
+            infctx=infctx,
         )
         visitor.visit(stmt.result)
         # XXX: I think there are potentially issues with overlapping...

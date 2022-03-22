@@ -873,3 +873,46 @@ class TestEdgeQLGroup(tb.QueryTestCase):
         for obj in out:
             for el in obj.els:
                 self.assertEqual(obj.id, el[0])
+
+    async def test_edgeql_group_agg_multi_01(self):
+        await self.assert_query_result(
+            '''
+                with module cards
+                for g in (group Card BY .element) union (
+                    array_agg(g.elements.name ++ {"!", "?"})
+                );
+            ''',
+            tb.bag([
+                {"Bog monster!", "Bog monster?",
+                 "Giant turtle!", "Giant turtle?"},
+                {"Imp!", "Imp?", "Dragon!", "Dragon?"},
+                {"Dwarf!", "Dwarf?", "Golem!", "Golem?"},
+                {"Sprite!", "Sprite?", "Giant eagle!",
+                 "Giant eagle?", "Djinn!", "Djinn?"}
+            ])
+        )
+
+    async def test_edgeql_group_agg_multi_02(self):
+        await self.assert_query_result(
+            '''
+                with module cards
+                for g in (group Card BY .element) union (
+                    count((Award { multi z := g.elements.name }.z))
+                );          ''',
+            tb.bag([6, 6, 6, 9]),
+        )
+
+    async def test_edgeql_group_agg_multi_03(self):
+        await self.assert_query_result(
+            '''
+                for g in (group BooleanTest by .val) union (
+                    array_agg(g.elements.tags)
+                );
+            ''',
+            tb.bag([
+                ["red"],
+                [],
+                tb.bag(["red", "green"]),
+                tb.bag(["red", "black"]),
+            ]),
+        )

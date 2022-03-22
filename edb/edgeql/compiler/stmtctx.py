@@ -241,7 +241,7 @@ def fini_expression(
     for ir_set in exprs_to_clear:
         ir_set.expr = None
 
-    group.infer_group_aggregates(ir, ctx=ctx)
+    group.infer_group_aggregates(ir, ctx=ctx, infctx=inf_ctx)
 
     assert isinstance(ir, irast.Set)
     source_map = {k: v for k, v in ctx.source_map.items()

@@ -63,6 +63,8 @@ class InfCtx(NamedTuple):
     ]
     singletons: FrozenSet[irast.PathId]
     distinct_iterator: Optional[irast.PathId]
+    # XXX this is nonsense and needs to be cached right???
+    ignore_computed_cards: bool
 
 
 def make_ctx(env: context.Environment) -> InfCtx:
@@ -72,4 +74,5 @@ def make_ctx(env: context.Environment) -> InfCtx:
         inferred_multiplicity={},
         singletons=frozenset(env.singletons),
         distinct_iterator=None,
+        ignore_computed_cards=False,
     )
