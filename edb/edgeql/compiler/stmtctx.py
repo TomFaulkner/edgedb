@@ -48,6 +48,7 @@ from . import astutils
 from . import context
 from . import dispatch
 from . import eta_expand
+from . import group
 from . import inference
 from . import options as coptions
 from . import pathctx
@@ -239,6 +240,8 @@ def fini_expression(
 
     for ir_set in exprs_to_clear:
         ir_set.expr = None
+
+    group.infer_group_aggregates(ir, ctx=ctx)
 
     assert isinstance(ir, irast.Set)
     source_map = {k: v for k, v in ctx.source_map.items()

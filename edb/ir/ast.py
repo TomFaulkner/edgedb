@@ -879,6 +879,10 @@ class GroupStmt(FilteredStmt):
     group_binding: Set = EmptySet()  # type: ignore
     grouping_binding: typing.Optional[Set] = None
     orderby: typing.Optional[typing.List[SortExpr]] = None
+    # Optimization information
+    group_aggregate_sets: typing.Dict[
+        typing.Optional[Set], typing.FrozenSet[PathId]
+    ] = ast.field(factory=dict)
 
 
 class MutatingStmt(Stmt):
