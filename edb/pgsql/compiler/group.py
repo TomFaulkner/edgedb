@@ -56,6 +56,8 @@ class FindAggregatingUses(ast_visitor.NodeVisitor):
         self.aggregate: Optional[irast.Set] = None
         self.sightings: Set[Optional[irast.Set]] = set()
         self.ctx = ctx
+        self.counts: Dict[irast.PathId, int] = {}
+        self.count_logs: Dict[irast.Set, Set[irast.PathId]] = {}
         self.scope_tree = ctx.scope_tree
 
     def visit_Stmt(self, stmt: irast.Stmt) -> Any:
@@ -89,13 +91,25 @@ class FindAggregatingUses(ast_visitor.NodeVisitor):
             self.visit(stmt.subject)
         self.visit(stmt.result)
 
+        # XXX: AS D F THIS obviously fucks the counting thing
+        # but the counting thing is fucked anyway
         res = self.generic_visit(stmt)
 
         self.aggregate = old
 
         return res
 
-    def visit_Set(self, node: irast.Set) -> None:
+    def repeated_node_visit(self, node: irast.Base) -> None:
+        if isinstance(node, irast.Set):
+            self.counts[node.path_id] = self.counts.get(node.path_id, 0) + 1
+
+    # XXX: can we just /always/ skip rptrs?
+    # and expr, if there is a shape??
+
+    def visit_Set(self, node: irast.Set, skip_rptr: bool=False) -> None:
+        # XXX: or just the node??
+        self.counts[node.path_id] = self.counts.get(node.path_id, 0) + 1
+
         if node.path_id in self.to_skip:
             return
 
@@ -121,18 +135,23 @@ class FindAggregatingUses(ast_visitor.NodeVisitor):
             # XXX: do we want this around .shape? around .expr??
             self.aggregate = None
 
-        self.visit(node.rptr)
         self.visit(node.shape)
 
-        if isinstance(node.expr, irast.Call):
-            self.process_call(node.expr, node)
-        else:
-            self.visit(node.expr)
-        # if not node.rptr:
-        #     self.visit(node.expr)
+        if not node.expr and node.rptr:
+            self.visit(node.rptr.source)
+        elif node.rptr:
+            self.counts[node.rptr.source.path_id] = self.counts.get(
+                node.rptr.source.path_id, 0)
+
+        # XXX: maybe need to still look for the target in the skipped rptrs?
+        if not node.shape:
+            if isinstance(node.expr, irast.Call):
+                self.process_call(node.expr, node)
+            else:
+                self.visit(node.expr)
 
         self.aggregate = old
-        self.path_scope = old_scope
+        self.scope_tree = old_scope
 
     def process_call(self, node: irast.Call, ir_set: irast.Set) -> None:
         # It needs to be backed by an actual SQL function and must
@@ -147,6 +166,8 @@ class FindAggregatingUses(ast_visitor.NodeVisitor):
             # If this *returns* a set, it is going to mess things up since
             # the operation can't actually run on multiple things...
 
+            old_counts = None
+
             # TODO: we would like to do better in some cases with
             # DISTINCT and the like where there are built in features
             # to do it in a GROUP
@@ -158,9 +179,31 @@ class FindAggregatingUses(ast_visitor.NodeVisitor):
                 calls_sql_func
                 and typemod == qltypes.TypeModifier.SetOfType
             ):
+                old_counts = self.counts
+                self.counts = {}
                 self.aggregate = ir_set
             self.visit(arg)
             self.aggregate = old
+
+            if old_counts is not None:
+                self.count_logs[ir_set] = {
+                    k for k, v in self.counts.items() if v == 0
+                    and self.scope_tree.is_visible(k)
+                }
+                for k, n in self.counts.items():
+                    # If we referred to some visible set and also
+                    # spotted the target, we can't actually compile
+                    # the target separately, so ditch it.
+                    if (
+                        n > 0
+                        and self.scope_tree.is_visible(k)
+                        and ir_set in self.sightings
+                    ):
+                        self.sightings.discard(ir_set)
+                        self.sightings.add(None)
+                    old_counts[k] = self.counts.get(k, 0) + n
+
+                self.counts = old_counts
 
 
 def compile_grouping_atom(
@@ -379,6 +422,11 @@ def _compile_group(
             if not group_use:
                 continue
             with groupctx.subrel() as hoistctx:
+                # XXX: are there are other checks that need to be done
+                # for this to be safe? Some sort of visibility check?
+                hoistctx.skippable_sources |= (
+                    visitor.count_logs.get(group_use, frozenset()))
+
                 # XXX: do we need the rvars??
                 relgen.process_set_as_agg_expr_inner(
                     group_use, hoistctx.rel,

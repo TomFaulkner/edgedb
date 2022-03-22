@@ -1192,7 +1192,7 @@ def process_set_as_subquery(
             source_is_visible = source_is_actually_visible
 
         if source_is_visible and not (
-            False
+            ir_source.path_id in ctx.skippable_sources
             # # XXX: But make sure not to for FreeObjects, which always
             # # exist and which basically never are depended on!
             # source_is_actually_visible

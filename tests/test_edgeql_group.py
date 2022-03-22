@@ -21,7 +21,7 @@ import os.path
 import edgedb
 
 from edb.testbase import server as tb
-from edb.tools import test
+# from edb.tools import test
 
 
 class TestEdgeQLGroup(tb.QueryTestCase):
@@ -210,6 +210,19 @@ class TestEdgeQLGroup(tb.QueryTestCase):
             ])
         )
 
+    async def test_edgeql_group_process_select_04(self):
+        await self.assert_query_result(
+            r'''
+            WITH MODULE cards
+            SELECT (GROUP Card BY .element) {
+                cnt := count(.elements),
+            };
+            ''',
+            tb.bag([
+                {"cnt": 2}, {"cnt": 2}, {"cnt": 2}, {"cnt": 3}
+            ])
+        )
+
     async def test_edgeql_group_process_for_01b(self):
         await self.assert_query_result(
             r'''
@@ -227,7 +240,6 @@ class TestEdgeQLGroup(tb.QueryTestCase):
             ])
         )
 
-    @test.xfail('Breaks because of the known is_visible_binding_ref bug')
     async def test_edgeql_group_process_for_01c(self):
         await self.assert_query_result(
             r'''
@@ -242,6 +254,23 @@ class TestEdgeQLGroup(tb.QueryTestCase):
                 {"cnt": 2, "element": "Fire"},
                 {"cnt": 2, "element": "Earth"},
                 {"cnt": 3, "element": "Air"},
+            ])
+        )
+
+    async def test_edgeql_group_process_for_01d(self):
+        await self.assert_query_result(
+            r'''
+            with module cards
+            for g in (group Card by .element) union (for gi in 0 union (
+                element := g.key.element,
+                cst := sum(g.elements.cost + gi),
+            ));
+            ''',
+            tb.bag([
+                {"cst": 5, "element": "Water"},
+                {"cst": 6, "element": "Fire"},
+                {"cst": 4, "element": "Earth"},
+                {"cst": 7, "element": "Air"},
             ])
         )
 
@@ -822,7 +851,6 @@ class TestEdgeQLGroup(tb.QueryTestCase):
             ])
         )
 
-    @test.xfail('Gives bare ids instead of shapes')
     async def test_edgeql_group_simple_agg_01(self):
         await self.con.query(
             r'''
@@ -832,7 +860,6 @@ class TestEdgeQLGroup(tb.QueryTestCase):
                 };
             ''')
 
-    @test.xfail("The ids don't match")
     async def test_edgeql_group_agg_with_free_ref_01(self):
         # This is silly and pathological and I would be able to sleep
         # at night even if it doesn't work.

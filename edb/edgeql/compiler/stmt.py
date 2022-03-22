@@ -184,12 +184,7 @@ def compile_ForQuery(
 
         iterator_stmt = setgen.new_set_from_set(
             iterator_view, preserve_scope_ns=True, ctx=sctx)
-        # XXX: This from_desugaring check works around an issue
-        # with groups but it doesn't really solve the problem.
-        # We need to beef up the analysis when it comes to
-        # this sort of thing.
-        if not qlstmt.from_desugaring:
-            iterator_view.is_visible_binding_ref = True
+        iterator_view.is_visible_binding_ref = True
         stmt.iterator_stmt = iterator_stmt
 
         iterator_type = setgen.get_set_type(iterator_stmt, ctx=ctx)
