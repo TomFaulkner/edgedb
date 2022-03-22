@@ -586,6 +586,7 @@ class DeleteQuery(Query, SubjectMixin, SelectClauseMixin):
 class ForQuery(Query, ReturningMixin):
     iterator: Expr
     iterator_alias: str
+    from_desugaring: bool = False
 
 
 # Transactions

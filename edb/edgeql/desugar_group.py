@@ -230,6 +230,7 @@ def try_group_rewrite(
             iterator_alias=node.iterator_alias,
             iterator=igroup.result,
             result=node.result,
+            from_desugaring=True,
         )
         return igroup.replace(result=new_result, aliases=node.aliases)
 

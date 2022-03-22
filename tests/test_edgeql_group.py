@@ -227,6 +227,24 @@ class TestEdgeQLGroup(tb.QueryTestCase):
             ])
         )
 
+    @test.xfail('Breaks because of the known is_visible_binding_ref bug')
+    async def test_edgeql_group_process_for_01c(self):
+        await self.assert_query_result(
+            r'''
+            with module cards
+            for h in (group Card by .element) union (for g in h union (
+                element := g.key.element,
+                cnt := count(g.elements),
+            ));
+            ''',
+            tb.bag([
+                {"cnt": 2, "element": "Water"},
+                {"cnt": 2, "element": "Fire"},
+                {"cnt": 2, "element": "Earth"},
+                {"cnt": 3, "element": "Air"},
+            ])
+        )
+
     async def test_edgeql_group_sets_01(self):
         await self.assert_query_result(
             r'''
